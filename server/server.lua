@@ -1,7 +1,7 @@
 local Core <const> = exports.vorp_core:GetCore()
-local storeLimits = {}
+local storeLimits <const> = {}
 local T <const> = TranslationStores.Langs[Lang]
-
+local storesInUse <const> = {}
 
 -- * STORE ITEM SELL/BUY LIMITS * --
 CreateThread(function()
@@ -46,7 +46,7 @@ local function checkStoreLimits(storeId, ItemName, quantity, action)
     if not storeLimits[storeId] then
         return true
     end
-    for k, v in pairs(storeLimits[storeId]) do
+    for _, v in pairs(storeLimits[storeId]) do
         if action == "sell" then
             if v.itemName == ItemName and v.type == "buy" then
                 v.amount = v.amount + quantity
@@ -155,7 +155,7 @@ local function buyItems(_source, Character, value, ItemName, storeId)
         end
 
         if value.weapon then
-            for i = 1, value.quantity, 1 do
+            for _ = 1, value.quantity, 1 do
                 exports.vorp_inventory:createWeapon(_source, ItemName)
             end
         else
@@ -182,7 +182,7 @@ local function buyItems(_source, Character, value, ItemName, storeId)
         end
 
         if value.weapon then
-            for i = 1, value.quantity, 1 do
+            for _ = 1, value.quantity, 1 do
                 exports.vorp_inventory:createWeapon(_source, ItemName)
             end
         else
@@ -258,6 +258,12 @@ end)
 -- * CALLBACKS * --
 Core.Callback.Register('vorp_stores:callback:getShopStock', function(source, cb, args)
     local items = Config.SellItems[args]
+    if not items then
+        print(("ERROR: No SellItems config found for store '%s you must add one'"):format(args or "unknown"))
+        cb({})
+        return
+    end
+
     local ItemsFound = false
     local PlayerItems = {}
     local userInv = exports.vorp_inventory:getUserInventoryItems(source)
@@ -327,7 +333,6 @@ Core.Callback.Register('vorp_stores:callback:ShopStock', function(source, cb, ar
 end)
 
 
-local storesInUse = {}
 Core.Callback.Register("vorp_stores:callback:canOpenStore", function(source, cb, storeIndex)
     local _source = source
 
@@ -349,27 +354,34 @@ end)
 
 -- * LOGIC FOR RANDOM PRICES * --
 AddEventHandler('onResourceStart', function(resourceName)
-    if (GetCurrentResourceName() ~= resourceName) then
-        return
-    end
+    if (GetCurrentResourceName() ~= resourceName) then return end
     for storeId, storeConfig in pairs(Config.Stores) do
         if storeConfig.RandomPrices then
             for index, storeItem in ipairs(Config.SellItems[storeId] or {}) do
-                Config.SellItems[storeId][index].sellprice = storeItem.randomprice
+                if storeItem.randomprice then
+                    Config.SellItems[storeId][index].sellprice = storeItem.randomprice
+                else
+                    local itemName = storeItem.itemName
+                    print(("you have enabled random prices for this store %s but no randomprice was added for the item %s"):format(storeId, itemName))
+                end
             end
             for index, storeItem in ipairs(Config.BuyItems[storeId] or {}) do
-                Config.BuyItems[storeId][index].buyprice = storeItem.randomprice
+                if storeItem.randomprice then
+                    Config.BuyItems[storeId][index].buyprice = storeItem.randomprice
+                else
+                    local itemName = storeItem.itemName
+                    print(("you have enabled random prices for this store %s but no randomprice was added for the item %s"):format(storeId, itemName))
+                end
             end
         end
+
         if storeConfig.useRandomLocation then
-            local randomLocation = math.random(1, #storeConfig.possibleLocations.OpenMenu)
+            local randomLocation            = math.random(1, #storeConfig.possibleLocations.OpenMenu)
             Config.Stores[storeId].Blip.Pos = storeConfig.possibleLocations.OpenMenu[randomLocation]
-            Config.Stores[storeId].Npc.Pos = storeConfig.possibleLocations.Npcs[randomLocation]
+            Config.Stores[storeId].Npc.Pos  = storeConfig.possibleLocations.Npcs[randomLocation]
         end
     end
 end)
-
-
 
 RegisterServerEvent('vorp_stores:GetRefreshedPrices', function()
     local _source = source
@@ -379,7 +391,7 @@ end)
 
 
 -- event drrop player
-AddEventHandler('playerDropped', function(reason)
+AddEventHandler('playerDropped', function()
     local _source = source
     for k, v in pairs(storesInUse) do
         if v == _source then

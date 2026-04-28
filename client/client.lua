@@ -358,7 +358,9 @@ function OpenSellMenu(storeId, category)
                     if storeItem.currencyType == "cash" then
                         ctp = "$"
                     end
-
+                    if not storeItem?.sellprice then
+                       return print(("WARNING: Item '%s' in store '%s' is missing sellprice!"):format(storeItem.itemName or "unknown", storeId or "unknown"))
+                    end
                     if shopStocks then
                         for _, items in pairs(shopStocks) do
                             if items.itemName == storeItem.itemName and items.type == "sell" then
@@ -388,6 +390,7 @@ function OpenSellMenu(storeId, category)
 
                     if not itemFound then
                         local sellprice = storeItem.sellprice
+
                         if Config.AllowSellItemsWithDecay and Config.SellItemBasedOnPercentage and value.isDegradable then
                             -- adjust price based on percentage, theres a problem here because decay is counting so price might be less if the percentage has been changed
                             sellprice = storeItem.sellprice * 0 * ((100 - value.percentage) / 100)
@@ -413,7 +416,7 @@ function OpenSellMenu(storeId, category)
     end
 
     if not next(menuElements) then
-        print("No items found in this category for you to sell ")
+        Core.NotifyObjective(T.notSelectedItemToSell, 5000)
         OpenCategory(storeId)
         return
     end
@@ -530,7 +533,9 @@ function OpenBuyMenu(storeId, category)
             if storeItem.currencyType == "cash" then
                 ctp = "$"
             end
-
+            if not storeItem?.buyprice then
+               return print(("WARNING: Item '%s' in store '%s' is missing buyprice!"):format(storeItem.itemLabel or "unknown", storeId or "unknown"))
+            end
             if shopStocks then
                 for _, items in pairs(shopStocks) do
                     if items.itemName == storeItem.itemName and items.type == "buy" then
@@ -704,3 +709,8 @@ AddEventHandler('onResourceStop', function(resourceName)
         end
     end
 end)
+
+
+
+
+
